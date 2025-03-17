@@ -47,7 +47,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 
 		private driveFileEntityService: DriveFileEntityService,
 	) {
-		super(meta, paramDef, async (ps, me) => {
+		super(meta, paramDef, async (ps, [me, _]) => {
 			const files = await this.driveFilesRepository.findBy({
 				name: ps.name,
 				userId: me.id,

@@ -339,6 +339,32 @@ signToActivityPubGet: true
 # However it will make it impossible for other instances to lookup third-party user and notes through your URL.
 #disallowExternalApRedirect: true
 
+# Legacy token behavior (default: no_admin)
+# This changes the acceptance of legacy unscoped, basically un-revokable tokens.
+# allow: restore legacy behavior
+# no_admin: allow unscoped tokens, but disallow admin actions
+# deny: treat unscoped tokens as invalid
+#legacyTokenBehavior: deny
+
+# Additional Key Material For Runtime Secrets (External IKM)
+#
+# This setting adds extra layers of protection for the portion of secrets that are hard to revoke once compromised
+# (actor private keys and session signing keys). It's especially useful to protect against database leaks.
+#
+# You can provide these extra keys in 3 ways:
+#   1. Using environment variables (env)
+#   2. Using files (whitespace trimmed) (file)
+#   3. Using a password in the config file (pass)
+#
+# Important Notes:
+# - All configured keys must be present when starting the service, ordering and the specific way (env vs. file vs. pass) the secret was provided doesn't matter
+# - Once setup, currently there is no user-friendly way for rekeying your database, you have to manually reencrypt database column "meta"."secretKey", see packages/backend/src/crypto/RuntimeSecret.ts
+#
+#externalIkm:
+#  - env: 'MISSKEY_RUNTIME_SECRET_1'      # Gets a secret from an environment variable
+#  - file: '/run/docker/secrets/runtime_secret_2'    # Gets a secret from a file
+#  - pass: 'password'                     # Derive a secret from a password
+
 # Upload or download file size limits (bytes)
 #maxFileSize: 262144000
 

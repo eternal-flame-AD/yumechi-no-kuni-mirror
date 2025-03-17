@@ -26,7 +26,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 	constructor(
 		private achievementService: AchievementService,
 	) {
-		super(meta, paramDef, async (ps, me) => {
+		super(meta, paramDef, async (ps, [me, _]) => {
 			await this.achievementService.create(me.id, ps.name);
 		});
 	}

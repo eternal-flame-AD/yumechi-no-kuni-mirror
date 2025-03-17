@@ -71,7 +71,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> {
 		private queueService: QueueService,
 		private downloadService: DownloadService,
 	) {
-		super(meta, paramDef, async (ps, me) => {
+		super(meta, paramDef, async (ps, [me, _]) => {
 			const userExist = await this.usersRepository.exists({ where: { id: me.id } });
 			if (!userExist) throw new ApiError(meta.errors.noSuchUser);
 			const file = await this.driveFilesRepository.findOneBy({ id: ps.fileId });

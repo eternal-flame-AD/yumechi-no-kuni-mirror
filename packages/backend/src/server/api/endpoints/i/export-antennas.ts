@@ -28,7 +28,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 	constructor (
 		private queueService: QueueService,
 	) {
-		super(meta, paramDef, async (ps, me) => {
+		super(meta, paramDef, async (ps, [me, _]) => {
 			this.queueService.createExportAntennasJob(me);
 		});
 	}

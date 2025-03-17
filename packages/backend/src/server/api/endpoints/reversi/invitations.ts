@@ -30,7 +30,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		private userEntityService: UserEntityService,
 		private reversiService: ReversiService,
 	) {
-		super(meta, paramDef, async (ps, me) => {
+		super(meta, paramDef, async (ps, [me, _]) => {
 			const invitations = await this.reversiService.getInvitations(me);
 
 			return await this.userEntityService.packMany(invitations, me);

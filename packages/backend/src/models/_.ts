@@ -81,6 +81,7 @@ import { MiUserListFavorite } from '@/models/UserListFavorite.js';
 import { MiBubbleGameRecord } from '@/models/BubbleGameRecord.js';
 import { MiReversiGame } from '@/models/ReversiGame.js';
 import type { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity.js';
+import { MiJWTTokenInvalidation } from './JWTTokenInvalidation.js';
 
 export interface MiRepository<T extends ObjectLiteral> {
 	createTableColumnNames(this: Repository<T> & MiRepository<T>): string[];
@@ -223,6 +224,7 @@ export type GalleryLikesRepository = Repository<MiGalleryLike> & MiRepository<Mi
 export type GalleryPostsRepository = Repository<MiGalleryPost> & MiRepository<MiGalleryPost>;
 export type HashtagsRepository = Repository<MiHashtag> & MiRepository<MiHashtag>;
 export type InstancesRepository = Repository<MiInstance> & MiRepository<MiInstance>;
+export type JWTTokenInvalidationsRepository = Repository<MiJWTTokenInvalidation> & MiRepository<MiJWTTokenInvalidation>;
 export type MetasRepository = Repository<MiMeta> & MiRepository<MiMeta>;
 export type ModerationLogsRepository = Repository<MiModerationLog> & MiRepository<MiModerationLog>;
 export type MutingsRepository = Repository<MiMuting> & MiRepository<MiMuting>;

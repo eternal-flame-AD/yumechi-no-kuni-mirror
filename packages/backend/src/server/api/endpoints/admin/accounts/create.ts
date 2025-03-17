@@ -69,8 +69,8 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		private userEntityService: UserEntityService,
 		private signupService: SignupService,
 	) {
-		super(meta, paramDef, async (ps, _me, token) => {
-			const me = _me ? await this.usersRepository.findOneByOrFail({ id: _me.id }) : null;
+		super(meta, paramDef, async (ps, auth, token) => {
+			const me = auth ? await this.usersRepository.findOneByOrFail({ id: auth[0].id }) : null;
 
 			if (this.serverSettings.rootUserId == null && me == null && token == null) {
 				// 初回セットアップの場合

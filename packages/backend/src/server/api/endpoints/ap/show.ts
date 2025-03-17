@@ -117,7 +117,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		private apPersonService: ApPersonService,
 		private apNoteService: ApNoteService,
 	) {
-		super(meta, paramDef, async (ps, me) => {
+		super(meta, paramDef, async (ps, [me, _]) => {
 			const object = await this.fetchAny(ps.uri, me);
 			if (object) {
 				return object;

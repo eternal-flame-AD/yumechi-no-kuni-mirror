@@ -15,6 +15,7 @@ import { RepositoryModule } from './models/RepositoryModule.js';
 import { allSettled } from './misc/promise-tracker.js';
 import { GlobalEvents } from './core/GlobalEventService.js';
 import type { Provider, OnApplicationShutdown } from '@nestjs/common';
+import { RuntimeSecretService } from './core/crypto/RuntimeSecretService.js';
 
 const $config: Provider = {
 	provide: DI.config,
@@ -149,11 +150,21 @@ const $meta: Provider = {
 	inject: [DI.db, DI.redisForSub],
 };
 
+const $runtimeSecretService: Provider = {
+	provide: DI.runtimeSecretService,
+	useFactory: async (config: Config, _meta: MiMeta, db: DataSource) => {
+		const runtimeSecretService = new RuntimeSecretService(config, db);
+		await runtimeSecretService.initialize();
+		return runtimeSecretService;
+	},
+	inject: [DI.config, DI.meta, DI.db],
+};
+
 @Global()
 @Module({
 	imports: [RepositoryModule],
-	providers: [$config, $db, $meta, $meilisearch, $redis, $redisForPub, $redisForSub, $redisForTimelines, $redisForReactions],
-	exports: [$config, $db, $meta, $meilisearch, $redis, $redisForPub, $redisForSub, $redisForTimelines, $redisForReactions, RepositoryModule],
+	providers: [$config, $db, $meta, $meilisearch, $redis, $redisForPub, $redisForSub, $redisForTimelines, $redisForReactions, $runtimeSecretService],
+	exports: [$config, $db, $meta, $meilisearch, $redis, $redisForPub, $redisForSub, $redisForTimelines, $redisForReactions, $runtimeSecretService, RepositoryModule],
 })
 export class GlobalModule implements OnApplicationShutdown {
 	constructor(
@@ -163,6 +174,7 @@ export class GlobalModule implements OnApplicationShutdown {
 		@Inject(DI.redisForSub) private redisForSub: Redis.Redis,
 		@Inject(DI.redisForTimelines) private redisForTimelines: Redis.Redis,
 		@Inject(DI.redisForReactions) private redisForReactions: Redis.Redis,
+		@Inject(DI.runtimeSecretService) private runtimeSecretService: RuntimeSecretService,
 	) { }
 
 	public async dispose(): Promise<void> {
@@ -177,6 +189,7 @@ export class GlobalModule implements OnApplicationShutdown {
 			this.redisForTimelines.disconnect(),
 			this.redisForReactions.disconnect(),
 		]);
+		this.runtimeSecretService.zeroize();
 	}
 
 	async onApplicationShutdown(signal: string): Promise<void> {

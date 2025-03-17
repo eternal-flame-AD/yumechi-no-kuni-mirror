@@ -24,7 +24,7 @@ export default abstract class Channel {
 	public static readonly kind?: string | null;
 
 	protected get user() {
-		return this.connection.user;
+		return this.connection.auth?.[0];
 	}
 
 	protected get userProfile() {

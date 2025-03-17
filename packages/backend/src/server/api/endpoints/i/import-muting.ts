@@ -67,7 +67,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		private queueService: QueueService,
 		private accountMoveService: AccountMoveService,
 	) {
-		super(meta, paramDef, async (ps, me) => {
+		super(meta, paramDef, async (ps, [me, _]) => {
 			const file = await this.driveFilesRepository.findOneBy({ id: ps.fileId });
 
 			if (file == null) throw new ApiError(meta.errors.noSuchFile);

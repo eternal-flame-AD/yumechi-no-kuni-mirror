@@ -84,16 +84,16 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		private idService: IdService,
 		private fanoutTimelineEndpointService: FanoutTimelineEndpointService,
 	) {
-		super(meta, paramDef, async (ps, me) => {
+		super(meta, paramDef, async (ps, auth) => {
 			const untilId = ps.untilId ?? (ps.untilDate ? this.idService.gen(ps.untilDate!) : null);
 			const sinceId = ps.sinceId ?? (ps.sinceDate ? this.idService.gen(ps.sinceDate!) : null);
-			const isSelf = me && (me.id === ps.userId);
+			const isSelf = auth && (auth[0].id === ps.userId);
 
 			if (ps.withReplies && ps.withFiles) throw new ApiError(meta.errors.bothWithRepliesAndWithFiles);
 
 			// early return if me is blocked by requesting user
-			if (me != null) {
-				const userIdsWhoBlockingMe = await this.cacheService.userBlockedCache.fetch(me.id);
+			if (auth != null) {
+				const userIdsWhoBlockingMe = await this.cacheService.userBlockedCache.fetch(auth[0].id);
 				if (userIdsWhoBlockingMe.has(ps.userId)) {
 					return [];
 				}
@@ -108,9 +108,9 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 					withChannelNotes: ps.withChannelNotes,
 					withFiles: ps.withFiles,
 					withRenotes: ps.withRenotes,
-				}, me);
+				}, auth?.[0] ?? null);
 
-				return await this.noteEntityService.packMany(timeline, me);
+				return await this.noteEntityService.packMany(timeline, auth?.[0]);
 			}
 
 			const redisTimelines: FanoutTimelineName[] = [ps.withFiles ? `userTimelineWithFiles:${ps.userId}` : `userTimeline:${ps.userId}`];
@@ -118,14 +118,14 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 			if (ps.withReplies) redisTimelines.push(`userTimelineWithReplies:${ps.userId}`);
 			if (ps.withChannelNotes) redisTimelines.push(`userTimelineWithChannel:${ps.userId}`);
 
-			const isFollowing = me && Object.hasOwn(await this.cacheService.userFollowingsCache.fetch(me.id), ps.userId);
+			const isFollowing = auth && Object.hasOwn(await this.cacheService.userFollowingsCache.fetch(auth[0].id), ps.userId);
 
 			const timeline = await this.fanoutTimelineEndpointService.timeline({
 				untilId,
 				sinceId,
 				limit: ps.limit,
 				allowPartial: ps.allowPartial,
-				me,
+				me: auth?.[0],
 				redisTimelines,
 				useDbFallback: true,
 				ignoreAuthorFromMute: true,
@@ -134,7 +134,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				excludePureRenotes: !ps.withRenotes,
 				noteFilter: note => {
 					if (note.channel?.isSensitive && !isSelf) return false;
-					if (note.visibility === 'specified' && (!me || (me.id !== note.userId && !note.visibleUserIds.some(v => v === me.id)))) return false;
+					if (note.visibility === 'specified' && (!auth?.[0] || (auth[0].id !== note.userId && !note.visibleUserIds.some(v => v === auth[0].id)))) return false;
 					if (note.visibility === 'followers' && !isFollowing && !isSelf) return false;
 
 					return true;
@@ -147,7 +147,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 					withChannelNotes: ps.withChannelNotes,
 					withFiles: ps.withFiles,
 					withRenotes: ps.withRenotes,
-				}, me),
+				}, auth?.[0] ?? null),
 			});
 
 			return timeline;

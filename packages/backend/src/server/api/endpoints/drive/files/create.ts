@@ -80,7 +80,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		private driveFileEntityService: DriveFileEntityService,
 		private driveService: DriveService,
 	) {
-		super(meta, paramDef, async (ps, me, _, file, cleanup, ip, headers) => {
+		super(meta, paramDef, async (ps, [me, _], file, cleanup, ip, headers) => {
 			// Get 'name' parameter
 			let name = ps.name ?? file!.name ?? null;
 			if (name != null) {

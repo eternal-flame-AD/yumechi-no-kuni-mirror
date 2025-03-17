@@ -46,7 +46,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> {
 		private userListFavoritesRepository: UserListFavoritesRepository,
 		private idService: IdService,
 	) {
-		super(meta, paramDef, async (ps, me) => {
+		super(meta, paramDef, async (ps, [me, _]) => {
 			const userListExist = await this.userListsRepository.exists({
 				where: {
 					id: ps.listId,

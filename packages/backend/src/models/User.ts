@@ -270,6 +270,12 @@ export class MiUser {
 	})
 	public token: string | null;
 
+	@Column('integer', {
+		default: 0,
+		comment: 'The serial number of the next JWT token to be issued.',
+	})
+	public jwt_serial_counter: number;
+
 	constructor(data: Partial<MiUser>) {
 		if (data == null) return;
 

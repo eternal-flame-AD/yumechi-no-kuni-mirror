@@ -71,7 +71,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		private notificationService: NotificationService,
 		private noteReadService: NoteReadService,
 	) {
-		super(meta, paramDef, async (ps, me) => {
+		super(meta, paramDef, async (ps, [me, _]) => {
 			const EXTRA_LIMIT = 100;
 
 			// includeTypes が空の場合はクエリしない

@@ -8,7 +8,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import * as Redis from 'ioredis';
 import * as WebSocket from 'ws';
 import { DI } from '@/di-symbols.js';
-import type { UsersRepository, MiAccessToken } from '@/models/_.js';
+import type { UsersRepository, MiAccessToken, AccessTokensRepository } from '@/models/_.js';
 import { NoteReadService } from '@/core/NoteReadService.js';
 import { NotificationService } from '@/core/NotificationService.js';
 import { bindThis } from '@/decorators.js';
@@ -16,7 +16,7 @@ import { CacheService } from '@/core/CacheService.js';
 import { MiLocalUser } from '@/models/User.js';
 import { UserService } from '@/core/UserService.js';
 import { ChannelFollowingService } from '@/core/ChannelFollowingService.js';
-import { AuthenticateService, AuthenticationError } from './AuthenticateService.js';
+import { AuthenticateService, AuthenticationError, TokenInfo, TokenParam } from './AuthenticateService.js';
 import MainStreamConnection from './stream/Connection.js';
 import { ChannelsService } from './stream/ChannelsService.js';
 import type * as http from 'node:http';
@@ -33,6 +33,9 @@ export class StreamingApiServerService {
 
 		@Inject(DI.usersRepository)
 		private usersRepository: UsersRepository,
+
+		@Inject(DI.accessTokensRepository)
+		private accessTokensRepository: AccessTokensRepository,
 
 		private cacheService: CacheService,
 		private noteReadService: NoteReadService,
@@ -60,7 +63,7 @@ export class StreamingApiServerService {
 			const q = new URL(request.url, `http://${request.headers.host}`).searchParams;
 
 			let user: MiLocalUser | null = null;
-			let app: MiAccessToken | null = null;
+			let tokenInfo: TokenParam & TokenInfo | null = null;
 
 			// https://datatracker.ietf.org/doc/html/rfc6750.html#section-2.1
 			// Note that the standard WHATWG WebSocket API does not support setting any headers,
@@ -69,12 +72,15 @@ export class StreamingApiServerService {
 				? request.headers.authorization.slice(7)
 				: q.get('i');
 
+			let auth: [MiLocalUser, TokenParam & TokenInfo] | null = null;
 			try {
-				[user, app] = await this.authenticateService.authenticate(token);
+				auth = await this.authenticateService.authenticate(token);
 
-				if (app !== null && !app.permission.some(p => p === 'read:account')) {
+				if (auth !== null && !auth[1].policy.some(p => p === 'read:account')) {
 					throw new AuthenticationError('Your app does not have necessary permissions to use websocket API.');
 				}
+
+				user = auth ? auth[0] : null;
 			} catch (e) {
 				if (e instanceof AuthenticationError) {
 					socket.write([
@@ -100,14 +106,26 @@ export class StreamingApiServerService {
 				this.notificationService,
 				this.cacheService,
 				this.channelFollowingService,
-				user, app,
+				auth,
 			);
 
 			await stream.init();
 
+			// backwards compatible behavior for now (is it needed?)
+			let legacyApp: MiAccessToken | null = null;
+			if (auth && auth[1].app_id) {
+				legacyApp = await this.accessTokensRepository.findOneBy({
+					id: auth[1].app_id,
+				});
+				if (legacyApp) {
+					legacyApp.hash = '';
+					legacyApp.token = '';
+				}
+			}
+
 			this.#wss.handleUpgrade(request, socket, head, (ws) => {
 				this.#wss.emit('connection', ws, request, {
-					stream, user, app,
+					stream, user, app: legacyApp,
 				});
 			});
 		});

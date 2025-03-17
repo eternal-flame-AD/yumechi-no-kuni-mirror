@@ -42,9 +42,9 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 	constructor(
 		private announcementService: AnnouncementService,
 	) {
-		super(meta, paramDef, async (ps, me) => {
+		super(meta, paramDef, async (ps, auth) => {
 			try {
-				return await this.announcementService.getAnnouncement(ps.announcementId, me);
+				return await this.announcementService.getAnnouncement(ps.announcementId, auth?.[0] ?? null);
 			} catch (err) {
 				if (err instanceof EntityNotFoundError) throw new ApiError(meta.errors.noSuchAnnouncement);
 				throw err;

@@ -7,7 +7,7 @@ import bcrypt from 'bcryptjs';
 import { Inject, Injectable } from '@nestjs/common';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import type { UsersRepository, UserProfilesRepository } from '@/models/_.js';
-import { generateNativeUserToken } from '@/misc/token.js';
+import { generateNativeUserToken } from '@/core/crypto/LegacyToken.js';
 import { GlobalEventService } from '@/core/GlobalEventService.js';
 import { DI } from '@/di-symbols.js';
 
@@ -36,7 +36,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 
 		private globalEventService: GlobalEventService,
 	) {
-		super(meta, paramDef, async (ps, me) => {
+		super(meta, paramDef, async (ps, [me, _]) => {
 			const freshUser = await this.usersRepository.findOneByOrFail({ id: me.id });
 			const oldToken = freshUser.token!;
 

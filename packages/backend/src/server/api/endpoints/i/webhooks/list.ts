@@ -60,7 +60,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		@Inject(DI.webhooksRepository)
 		private webhooksRepository: WebhooksRepository,
 	) {
-		super(meta, paramDef, async (ps, me) => {
+		super(meta, paramDef, async (ps, [me, _]) => {
 			const webhooks = await this.webhooksRepository.findBy({
 				userId: me.id,
 			});

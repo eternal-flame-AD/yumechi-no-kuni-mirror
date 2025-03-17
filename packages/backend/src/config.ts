@@ -19,6 +19,14 @@ type RedisOptionsSource = Partial<RedisOptions> & {
 	prefix?: string;
 };
 
+export type ExternalIKMConfig = {
+	env: string;
+} | {
+	file: string;
+} | {
+	pass: string;
+}
+
 /**
  * 設定ファイルの型
  */
@@ -103,6 +111,9 @@ type Source = {
 	perUserNotificationsMaxCount?: number;
 	deactivateAntennaThreshold?: number;
 	pidFile: string;
+
+	legacyTokenBehavior?: 'allow' | 'no_admin' | 'deny';
+	externalIkm?: ExternalIKMConfig | ExternalIKMConfig[];
 
 	logging?: {
 		sql?: {
@@ -202,6 +213,8 @@ export type Config = {
 	perChannelMaxNoteCacheCount: number;
 	perUserNotificationsMaxCount: number;
 	deactivateAntennaThreshold: number;
+	legacyTokenBehavior: 'allow' | 'no_admin' | 'deny';
+	externalIkm: ExternalIKMConfig[];
 	pidFile: string;
 };
 
@@ -319,6 +332,8 @@ export function loadConfig(): Config {
 		deactivateAntennaThreshold: config.deactivateAntennaThreshold ?? (1000 * 60 * 60 * 24 * 7),
 		pidFile: config.pidFile,
 		logging: config.logging,
+		legacyTokenBehavior: config.legacyTokenBehavior ?? 'no_admin',
+		externalIkm: config.externalIkm ? (Array.isArray(config.externalIkm) ? config.externalIkm : [config.externalIkm]) : [],
 	};
 }
 

@@ -10,6 +10,7 @@ import { IdService } from '@/core/IdService.js';
 import { NotificationService } from '@/core/NotificationService.js';
 import { secureRndstr } from '@/misc/secure-rndstr.js';
 import { DI } from '@/di-symbols.js';
+import { AuthenticateService } from '../../AuthenticateService.js';
 
 export const meta = {
 	tags: ['auth'],
@@ -52,8 +53,9 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 
 		private idService: IdService,
 		private notificationService: NotificationService,
+		private authenticateService: AuthenticateService,
 	) {
-		super(meta, paramDef, async (ps, me) => {
+		super(meta, paramDef, async (ps, [me, _]) => {
 			// Generate access token
 			const accessToken = secureRndstr(32);
 

@@ -14,6 +14,7 @@ import { UserEntityService } from '@/core/entities/UserEntityService.js';
 import { RoleService } from '@/core/RoleService.js';
 import { isUserRelated } from '@/misc/is-user-related.js';
 import { ApiError } from '../../error.js';
+import { AuthenticateService, KIND_MODERATOR_DAC_OVERRIDE } from '../../AuthenticateService.js';
 
 export const meta = {
 	tags: ['users', 'reactions'],
@@ -73,10 +74,11 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		private noteReactionEntityService: NoteReactionEntityService,
 		private queryService: QueryService,
 		private roleService: RoleService,
+		private authenticateService: AuthenticateService,
 	) {
-		super(meta, paramDef, async (ps, me) => {
-			const userIdsWhoBlockingMe = me ? await this.cacheService.userBlockedCache.fetch(me.id) : new Set<string>();
-			const iAmModerator = me ? await this.roleService.isModerator(me) : false; // Moderators can see reactions of all users
+		super(meta, paramDef, async (ps, auth) => {
+			const userIdsWhoBlockingMe = auth?.[0] ? await this.cacheService.userBlockedCache.fetch(auth?.[0].id) : new Set<string>();
+			const iAmModerator = auth?.[0] ? await this.authenticateService.hasPolicy(auth[1], KIND_MODERATOR_DAC_OVERRIDE) : false; // Moderators can see reactions of all users
 			if (!iAmModerator) {
 				const user = await this.cacheService.findUserById(ps.userId);
 				if (this.userEntityService.isRemoteUser(user)) {
@@ -84,7 +86,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				}
 
 				const profile = await this.userProfilesRepository.findOneByOrFail({ userId: ps.userId });
-				if ((me == null || me.id !== ps.userId) && !profile.publicReactions) {
+				if ((auth?.[0] == null || auth?.[0].id !== ps.userId) && !profile.publicReactions) {
 					throw new ApiError(meta.errors.reactionsNotPublic);
 				}
 
@@ -94,26 +96,26 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				}
 			}
 
-			const userIdsWhoMeMuting = me ? await this.cacheService.userMutingsCache.fetch(me.id) : new Set<string>();
+			const userIdsWhoMeMuting = auth?.[0] ? await this.cacheService.userMutingsCache.fetch(auth?.[0].id) : new Set<string>();
 
 			const query = this.queryService.makePaginationQuery(this.noteReactionsRepository.createQueryBuilder('reaction'),
 				ps.sinceId, ps.untilId, ps.sinceDate, ps.untilDate)
 				.andWhere('reaction.userId = :userId', { userId: ps.userId })
 				.leftJoinAndSelect('reaction.note', 'note');
 
-			this.queryService.generateVisibilityQuery(query, me);
+			this.queryService.generateVisibilityQuery(query, auth?.[0]);
 
 			const reactions = (await query
 				.limit(ps.limit)
 				.getMany()).filter(reaction => {
 				if (reaction.note?.userId === ps.userId) return true; // we can see reactions to note of requesting user
-				if (me && isUserRelated(reaction.note, userIdsWhoBlockingMe)) return false;
-				if (me && isUserRelated(reaction.note, userIdsWhoMeMuting)) return false;
+				if (auth?.[0] && isUserRelated(reaction.note, userIdsWhoBlockingMe)) return false;
+				if (auth?.[0] && isUserRelated(reaction.note, userIdsWhoMeMuting)) return false;
 
 				return true;
 			});
 
-			return await this.noteReactionEntityService.packMany(reactions, me, { withNote: true });
+			return await this.noteReactionEntityService.packMany(reactions, auth?.[0], { withNote: true });
 		});
 	}
 }

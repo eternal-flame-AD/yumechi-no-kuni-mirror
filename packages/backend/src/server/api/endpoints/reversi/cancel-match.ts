@@ -29,7 +29,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 	constructor(
 		private reversiService: ReversiService,
 	) {
-		super(meta, paramDef, async (ps, me) => {
+		super(meta, paramDef, async (ps, [me, _]) => {
 			if (ps.userId) {
 				await this.reversiService.matchSpecificUserCancel(me, ps.userId);
 				return;

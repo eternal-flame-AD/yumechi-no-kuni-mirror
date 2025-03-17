@@ -46,7 +46,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		private userEntityService: UserEntityService,
 		private queryService: QueryService,
 	) {
-		super(meta, paramDef, async (ps, me) => {
+		super(meta, paramDef, async (ps, auth) => {
 			const query = this.queryService.makePaginationQuery(this.usersRepository.createQueryBuilder('user'), ps.sinceId, ps.untilId)
 				.andWhere('user.host = :host', { host: ps.host });
 
@@ -54,7 +54,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				.limit(ps.limit)
 				.getMany();
 
-			return await this.userEntityService.packMany(users, me, { schema: 'UserDetailedNotMe' });
+			return await this.userEntityService.packMany(users, auth?.[0] ?? null, { schema: 'UserDetailedNotMe' });
 		});
 	}
 }

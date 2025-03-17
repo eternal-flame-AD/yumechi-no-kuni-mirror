@@ -39,7 +39,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		private federatedInstanceService: FederatedInstanceService,
 		private moderationLogService: ModerationLogService,
 	) {
-		super(meta, paramDef, async (ps, me) => {
+		super(meta, paramDef, async (ps, [me, _]) => {
 			const instance = await this.instancesRepository.findOneBy({ host: this.utilityService.toPuny(ps.host) });
 
 			if (instance == null) {

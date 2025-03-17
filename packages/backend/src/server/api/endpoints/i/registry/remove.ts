@@ -40,7 +40,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 	constructor(
 		private registryApiService: RegistryApiService,
 	) {
-		super(meta, paramDef, async (ps, me, accessToken) => {
+		super(meta, paramDef, async (ps, [me, _], accessToken) => {
 			await this.registryApiService.remove(me.id, accessToken != null ? accessToken.id : (ps.domain ?? null), ps.scope, ps.key);
 		});
 	}

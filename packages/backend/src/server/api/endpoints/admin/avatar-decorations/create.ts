@@ -78,7 +78,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		private avatarDecorationService: AvatarDecorationService,
 		private idService: IdService,
 	) {
-		super(meta, paramDef, async (ps, me) => {
+		super(meta, paramDef, async (ps, [me, _]) => {
 			const created = await this.avatarDecorationService.create({
 				name: ps.name,
 				description: ps.description,

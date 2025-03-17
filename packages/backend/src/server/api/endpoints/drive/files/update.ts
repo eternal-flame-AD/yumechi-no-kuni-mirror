@@ -10,6 +10,7 @@ import { DI } from '@/di-symbols.js';
 import { RoleService } from '@/core/RoleService.js';
 import { DriveService } from '@/core/DriveService.js';
 import { ApiError } from '../../../error.js';
+import { AuthenticateService, KIND_MODERATOR_DAC_OVERRIDE } from '@/server/api/AuthenticateService.js';
 
 export const meta = {
 	tags: ['drive'],
@@ -77,15 +78,15 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		private driveFilesRepository: DriveFilesRepository,
 
 		private driveService: DriveService,
-		private roleService: RoleService,
+		private authenticateService: AuthenticateService,
 	) {
-		super(meta, paramDef, async (ps, me) => {
+		super(meta, paramDef, async (ps, [user, token]) => {
 			const file = await this.driveFilesRepository.findOneBy({ id: ps.fileId });
 			if (file == null) {
 				throw new ApiError(meta.errors.noSuchFile);
 			}
 
-			if (!await this.roleService.isModerator(me) && (file.userId !== me.id)) {
+			if (!await this.authenticateService.hasPolicy(token, KIND_MODERATOR_DAC_OVERRIDE) && (file.userId !== user.id)) {
 				throw new ApiError(meta.errors.accessDenied);
 			}
 
@@ -97,7 +98,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 					name: ps.name,
 					isSensitive: ps.isSensitive,
 					comment: ps.comment,
-				}, me);
+				}, user);
 			} catch (e) {
 				if (e instanceof DriveService.InvalidFileNameError) {
 					throw new ApiError(meta.errors.invalidFileName);

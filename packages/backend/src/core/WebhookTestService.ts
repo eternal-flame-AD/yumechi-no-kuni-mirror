@@ -46,6 +46,7 @@ function generateAbuseReport(override?: Partial<MiAbuseUserReport>): AbuseReport
 function generateDummyUser(override?: Partial<MiUser>): MiUser {
 	return {
 		id: 'dummy-user-1',
+		jwt_serial_counter: 0,
 		updatedAt: new Date(Date.now() - oneDayMillis * 7),
 		lastFetchedAt: new Date(Date.now() - oneDayMillis * 5),
 		lastActiveDate: new Date(Date.now() - oneDayMillis * 3),

@@ -21,7 +21,7 @@ import type { Config } from '@/config.js';
 import { ApiError } from './error.js';
 import { RateLimiterService } from './RateLimiterService.js';
 import { ApiLoggerService } from './ApiLoggerService.js';
-import { AuthenticateService, AuthenticationError } from './AuthenticateService.js';
+import { AuthenticateService, AuthenticationError, KIND_ADMIN_ACL, KIND_ADMIN_RBAC_OVERRIDE, KIND_MODERATOR_ACL, KIND_USER_SESSION, TokenInfo, TokenParam } from './AuthenticateService.js';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import type { OnApplicationShutdown } from '@nestjs/common';
 import type { IEndpointMeta, IEndpoint } from './endpoints.js';
@@ -167,9 +167,9 @@ export class ApiCallService implements OnApplicationShutdown {
 			reply.code(400);
 			return;
 		}
-		this.authenticateService.authenticate(token).then(([user, app]) => {
-			this.call(endpoint, user, app, body, null, request).then((res) => {
-				if (request.method === 'GET' && endpoint.meta.cacheSec && !token && !user) {
+		this.authenticateService.authenticate(token).then((auth) => {
+			this.call(endpoint, auth, body, null, request).then((res) => {
+				if (request.method === 'GET' && endpoint.meta.cacheSec && !auth) {
 					reply.header('Cache-Control', `public, max-age=${endpoint.meta.cacheSec}`);
 				}
 				this.send(reply, res);
@@ -177,8 +177,8 @@ export class ApiCallService implements OnApplicationShutdown {
 				this.#sendApiError(reply, err);
 			});
 
-			if (user) {
-				this.logIp(request, user);
+			if (auth) {
+				this.logIp(request, auth[0]);
 			}
 		}).catch(err => {
 			this.#sendAuthenticationError(reply, err);
@@ -225,8 +225,8 @@ export class ApiCallService implements OnApplicationShutdown {
 			reply.code(400);
 			return;
 		}
-		this.authenticateService.authenticate(token).then(([user, app]) => {
-			this.call(endpoint, user, app, fields, {
+		this.authenticateService.authenticate(token).then((auth) => {
+			this.call(endpoint, auth, fields, {
 				name: multipartData.filename,
 				path: path,
 			}, request).then((res) => {
@@ -235,8 +235,8 @@ export class ApiCallService implements OnApplicationShutdown {
 				this.#sendApiError(reply, err);
 			});
 
-			if (user) {
-				this.logIp(request, user);
+			if (auth) {
+				this.logIp(request, auth[0]);
 			}
 		}).catch(err => {
 			this.#sendAuthenticationError(reply, err);
@@ -291,8 +291,7 @@ export class ApiCallService implements OnApplicationShutdown {
 	@bindThis
 	private async call(
 		ep: IEndpoint & { exec: any },
-		user: MiLocalUser | null | undefined,
-		token: MiAccessToken | null | undefined,
+		auth: [MiLocalUser, TokenParam & TokenInfo] | null | undefined,
 		data: any,
 		file: {
 			name: string;
@@ -300,7 +299,7 @@ export class ApiCallService implements OnApplicationShutdown {
 		} | null,
 		request: FastifyRequest<{ Body: Record<string, unknown> | undefined, Querystring: Record<string, unknown> }>,
 	) {
-		const isSecure = user != null && token == null;
+		const isSecure = auth != null && auth[1].app_id == null;
 
 		if (ep.meta.secure && !isSecure) {
 			throw new ApiError(accessDenied);
@@ -309,8 +308,8 @@ export class ApiCallService implements OnApplicationShutdown {
 		if (ep.meta.limit) {
 			// koa will automatically load the `X-Forwarded-For` header if `proxy: true` is configured in the app.
 			let limitActor: string;
-			if (user) {
-				limitActor = user.id;
+			if (auth) {
+				limitActor = auth[0].id;
 			} else {
 				limitActor = getIpHash(request.ip);
 			}
@@ -322,7 +321,7 @@ export class ApiCallService implements OnApplicationShutdown {
 			}
 
 			// TODO: 毎リクエスト計算するのもあれだしキャッシュしたい
-			const factor = user ? (await this.roleService.getUserPolicies(user.id)).rateLimitFactor : 1;
+			const factor = auth ? (await this.roleService.getUserPolicies(auth[0].id)).rateLimitFactor : 1;
 
 			if (factor > 0) {
 				// Rate limit
@@ -343,14 +342,14 @@ export class ApiCallService implements OnApplicationShutdown {
 		}
 
 		if (ep.meta.requireCredential || ep.meta.requireModerator || ep.meta.requireAdmin) {
-			if (user == null) {
+			if (!auth) {
 				throw new ApiError({
 					message: 'Credential required.',
 					code: 'CREDENTIAL_REQUIRED',
 					id: '1384574d-a912-4b81-8601-c7b1c4085df1',
 					httpStatusCode: 401,
 				});
-			} else if (user!.isSuspended) {
+			} else if (auth[0].isSuspended) {
 				throw new ApiError({
 					message: 'Your account has been suspended.',
 					code: 'YOUR_ACCOUNT_SUSPENDED',
@@ -361,7 +360,7 @@ export class ApiCallService implements OnApplicationShutdown {
 		}
 
 		if (ep.meta.prohibitMoved) {
-			if (user?.movedToUri) {
+			if (auth && auth[0].movedToUri) {
 				throw new ApiError({
 					message: 'You have moved your account.',
 					code: 'YOUR_ACCOUNT_MOVED',
@@ -371,9 +370,8 @@ export class ApiCallService implements OnApplicationShutdown {
 			}
 		}
 
-		if ((ep.meta.requireModerator || ep.meta.requireAdmin) && (this.meta.rootUserId !== user!.id)) {
-			const myRoles = await this.roleService.getUserRoles(user!.id);
-			if (ep.meta.requireModerator && !myRoles.some(r => r.isModerator || r.isAdministrator)) {
+		if ((ep.meta.requireModerator || ep.meta.requireAdmin) && (auth && this.meta.rootUserId !== auth[0].id)) {
+			if (ep.meta.requireModerator && !this.authenticateService.hasPolicy(auth[1], KIND_MODERATOR_ACL)) {
 				throw new ApiError({
 					message: 'You are not assigned to a moderator role.',
 					code: 'ROLE_PERMISSION_DENIED',
@@ -381,7 +379,7 @@ export class ApiCallService implements OnApplicationShutdown {
 					id: 'd33d5333-db36-423d-a8f9-1a2b9549da41',
 				});
 			}
-			if (ep.meta.requireAdmin && !myRoles.some(r => r.isAdministrator)) {
+			if (ep.meta.requireAdmin && !this.authenticateService.hasPolicy(auth[1], KIND_ADMIN_ACL)) {
 				throw new ApiError({
 					message: 'You are not assigned to an administrator role.',
 					code: 'ROLE_PERMISSION_DENIED',
@@ -391,10 +389,9 @@ export class ApiCallService implements OnApplicationShutdown {
 			}
 		}
 
-		if (ep.meta.requireRolePolicy != null && (this.meta.rootUserId !== user!.id)) {
-			const myRoles = await this.roleService.getUserRoles(user!.id);
-			const policies = await this.roleService.getUserPolicies(user!.id);
-			if (!policies[ep.meta.requireRolePolicy] && !myRoles.some(r => r.isAdministrator)) {
+		if (ep.meta.requireRolePolicy != null && (auth && this.meta.rootUserId !== auth[0].id)) {
+			const policies = await this.roleService.getUserPolicies(auth[0].id);
+			if (!policies[ep.meta.requireRolePolicy] && !this.authenticateService.hasPolicy(auth[1], KIND_ADMIN_RBAC_OVERRIDE)) {
 				throw new ApiError({
 					message: 'You are not assigned to a required role.',
 					code: 'ROLE_PERMISSION_DENIED',
@@ -404,14 +401,18 @@ export class ApiCallService implements OnApplicationShutdown {
 			}
 		}
 
-		if (token && ((ep.meta.kind && !token.permission.some(p => p === ep.meta.kind))
-			|| (!ep.meta.kind && (ep.meta.requireCredential || ep.meta.requireModerator || ep.meta.requireAdmin)))) {
-			throw new ApiError({
-				message: 'Your app does not have the necessary permissions to use this endpoint.',
-				code: 'PERMISSION_DENIED',
-				kind: 'permission',
-				id: '1370e5b7-d4eb-4566-bb1d-7748ee6a1838',
-			});
+		// if this is not a user session token, check for granular permissions
+		if (auth && !this.authenticateService.hasPolicy(auth[1], KIND_USER_SESSION)) {
+			const effectivePermissions = auth[1].is_sudo ? [...auth[1].sudo_policy, ...auth[1].policy] : auth[1].policy;
+			if (((ep.meta.kind && !effectivePermissions.some(p => p === ep.meta.kind))
+				|| (!ep.meta.kind && (ep.meta.requireCredential || ep.meta.requireModerator || ep.meta.requireAdmin)))) {
+				throw new ApiError({
+					message: 'Your app does not have the necessary permissions to use this endpoint.',
+					code: 'PERMISSION_DENIED',
+					kind: 'permission',
+					id: '1370e5b7-d4eb-4566-bb1d-7748ee6a1838',
+				});
+			}
 		}
 
 		// Cast non JSON input
@@ -439,11 +440,11 @@ export class ApiCallService implements OnApplicationShutdown {
 		if (this.config.sentryForBackend) {
 			return await Sentry.startSpan({
 				name: 'API: ' + ep.name,
-			}, () => ep.exec(data, user, token, file, request.ip, request.headers)
-				.catch((err: Error) => this.#onExecError(ep, data, err, user?.id)));
+			}, () => ep.exec(data, auth, file, request.ip, request.headers)
+				.catch((err: Error) => this.#onExecError(ep, data, err, auth?.[0]?.id)));
 		} else {
-			return await ep.exec(data, user, token, file, request.ip, request.headers)
-				.catch((err: Error) => this.#onExecError(ep, data, err, user?.id));
+			return await ep.exec(data, auth, file, request.ip, request.headers)
+				.catch((err: Error) => this.#onExecError(ep, data, err, auth?.[0]?.id));
 		}
 	}
 

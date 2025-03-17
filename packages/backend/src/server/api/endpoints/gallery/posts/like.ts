@@ -61,7 +61,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		private featuredService: FeaturedService,
 		private idService: IdService,
 	) {
-		super(meta, paramDef, async (ps, me) => {
+		super(meta, paramDef, async (ps, [me, _]) => {
 			const post = await this.galleryPostsRepository.findOneBy({ id: ps.postId });
 			if (post == null) {
 				throw new ApiError(meta.errors.noSuchPost);

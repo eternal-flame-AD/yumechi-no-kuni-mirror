@@ -131,7 +131,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 	constructor(
 		private userEntityService: UserEntityService,
 	) {
-		super(meta, paramDef, async (ps, me) => {
+		super(meta, paramDef, async (ps, [me, _]) => {
 			return Array.isArray(ps.userId)
 				? await this.userEntityService.getRelations(me.id, ps.userId).then(it => [...it.values()])
 				: await this.userEntityService.getRelation(me.id, ps.userId).then(it => [it]);

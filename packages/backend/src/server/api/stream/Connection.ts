@@ -19,6 +19,7 @@ import type { JsonObject, JsonValue } from '@/misc/json-value.js';
 import type { ChannelsService } from './ChannelsService.js';
 import type { EventEmitter } from 'events';
 import type Channel from './channel.js';
+import { TokenInfo, TokenParam } from '../AuthenticateService.js';
 
 const MAX_CHANNELS_PER_CONNECTION = 32;
 
@@ -27,8 +28,7 @@ const MAX_CHANNELS_PER_CONNECTION = 32;
  */
 // eslint-disable-next-line import/no-default-export
 export default class Connection {
-	public user?: MiUser;
-	public token?: MiAccessToken;
+	public auth?: [MiUser, TokenParam & TokenInfo] | null;
 	private wsConnection: WebSocket.WebSocket;
 	public subscriber: StreamEventEmitter;
 	private channels: Channel[] = [];
@@ -50,23 +50,21 @@ export default class Connection {
 		private cacheService: CacheService,
 		private channelFollowingService: ChannelFollowingService,
 
-		user: MiUser | null | undefined,
-		token: MiAccessToken | null | undefined,
+		auth: [MiUser, TokenParam & TokenInfo] | null | undefined,
 	) {
-		if (user) this.user = user;
-		if (token) this.token = token;
+		this.auth = auth ?? null;
 	}
 
 	@bindThis
 	public async fetch() {
-		if (this.user == null) return;
+		if (this.auth == null) return;
 		const [userProfile, following, followingChannels, userIdsWhoMeMuting, userIdsWhoBlockingMe, userIdsWhoMeMutingRenotes] = await Promise.all([
-			this.cacheService.userProfileCache.fetch(this.user.id),
-			this.cacheService.userFollowingsCache.fetch(this.user.id),
-			this.channelFollowingService.userFollowingChannelsCache.fetch(this.user.id),
-			this.cacheService.userMutingsCache.fetch(this.user.id),
-			this.cacheService.userBlockedCache.fetch(this.user.id),
-			this.cacheService.renoteMutingsCache.fetch(this.user.id),
+			this.cacheService.userProfileCache.fetch(this.auth[0].id),
+			this.cacheService.userFollowingsCache.fetch(this.auth[0].id),
+			this.channelFollowingService.userFollowingChannelsCache.fetch(this.auth[0].id),
+			this.cacheService.userMutingsCache.fetch(this.auth[0].id),
+			this.cacheService.userBlockedCache.fetch(this.auth[0].id),
+			this.cacheService.renoteMutingsCache.fetch(this.auth[0].id),
 		]);
 		this.userProfile = userProfile;
 		this.following = following;
@@ -79,7 +77,7 @@ export default class Connection {
 
 	@bindThis
 	public async init() {
-		if (this.user != null) {
+		if (this.auth != null) {
 			await this.fetch();
 
 			if (!this.fetchIntervalId) {
@@ -162,14 +160,14 @@ export default class Connection {
 		const note = this.cachedNotes.find(n => n.id === id);
 		if (note == null) return;
 
-		if (this.user && (note.userId !== this.user.id)) {
-			this.noteReadService.read(this.user.id, [note]);
+		if (this.auth && (note.userId !== this.auth[0].id)) {
+			this.noteReadService.read(this.auth[0].id, [note]);
 		}
 	}
 
 	@bindThis
 	private onReadNotification(payload: JsonValue | undefined) {
-		this.notificationService.readAllNotification(this.user!.id);
+		this.notificationService.readAllNotification(this.auth![0].id);
 	}
 
 	/**
@@ -263,11 +261,11 @@ export default class Connection {
 
 		const channelService = this.channelsService.getChannelService(channel);
 
-		if (channelService.requireCredential && this.user == null) {
+		if (channelService.requireCredential && this.auth == null) {
 			return;
 		}
 
-		if (this.token && ((channelService.kind && !this.token.permission.some(p => p === channelService.kind))
+			if (this.auth && ((channelService.kind && !this.auth[1].policy.some(p => p === channelService.kind))
 			|| (!channelService.kind && channelService.requireCredential))) {
 			return;
 		}

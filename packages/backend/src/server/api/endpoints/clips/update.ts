@@ -51,7 +51,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 
 		private clipEntityService: ClipEntityService,
 	) {
-		super(meta, paramDef, async (ps, me) => {
+		super(meta, paramDef, async (ps, [me, _]) => {
 			try {
 				// 空文字列をnullにしたいので??は使わない
 				// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing

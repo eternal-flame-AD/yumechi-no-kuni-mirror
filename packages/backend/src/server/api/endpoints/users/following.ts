@@ -14,6 +14,7 @@ import { UtilityService } from '@/core/UtilityService.js';
 import { DI } from '@/di-symbols.js';
 import { RoleService } from '@/core/RoleService.js';
 import { ApiError } from '../../error.js';
+import { AuthenticateService, KIND_MODERATOR_DAC_OVERRIDE } from '../../AuthenticateService.js';
 
 export const meta = {
 	tags: ['users'],
@@ -92,8 +93,9 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		private followingEntityService: FollowingEntityService,
 		private queryService: QueryService,
 		private roleService: RoleService,
+		private authenticateService: AuthenticateService,
 	) {
-		super(meta, paramDef, async (ps, me) => {
+		super(meta, paramDef, async (ps, auth) => {
 			const user = await this.usersRepository.findOneBy(ps.userId != null
 				? { id: ps.userId }
 				: { usernameLower: ps.username!.toLowerCase(), host: this.utilityService.toPunyNullable(ps.host) ?? IsNull() });
@@ -104,19 +106,20 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 
 			const profile = await this.userProfilesRepository.findOneByOrFail({ userId: user.id });
 
-			if (profile.followingVisibility !== 'public' && !await this.roleService.isModerator(me)) {
+			if (profile.followingVisibility !== 'public' && !(auth && await this.authenticateService.hasPolicy(auth[1], KIND_MODERATOR_DAC_OVERRIDE))) {
 				if (profile.followingVisibility === 'private') {
-					if (me == null || (me.id !== user.id)) {
+					if (auth?.[0] == null || (auth?.[0].id !== user.id)) {
 						throw new ApiError(meta.errors.forbidden);
 					}
 				} else if (profile.followingVisibility === 'followers') {
-					if (me == null) {
+					if (!auth) {
 						throw new ApiError(meta.errors.forbidden);
-					} else if (me.id !== user.id) {
+					}
+					if (auth?.[0] && auth?.[0].id !== user.id) {
 						const isFollowing = await this.followingsRepository.exists({
 							where: {
 								followeeId: user.id,
-								followerId: me.id,
+								followerId: auth?.[0]!.id,
 							},
 						});
 						if (!isFollowing) {
@@ -147,7 +150,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				.limit(ps.limit)
 				.getMany();
 
-			return await this.followingEntityService.packMany(followings, me, { populateFollowee: true });
+			return await this.followingEntityService.packMany(followings, auth?.[0] ?? null, { populateFollowee: true });
 		});
 	}
 }

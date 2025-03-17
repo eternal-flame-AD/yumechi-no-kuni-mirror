@@ -50,7 +50,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		private clipEntityService: ClipEntityService,
 		private clipService: ClipService,
 	) {
-		super(meta, paramDef, async (ps, me) => {
+		super(meta, paramDef, async (ps, [me, _]) => {
 			let clip: MiClip;
 			try {
 				// 空文字列をnullにしたいので??は使わない

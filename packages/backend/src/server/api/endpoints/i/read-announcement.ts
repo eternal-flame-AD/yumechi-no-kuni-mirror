@@ -31,7 +31,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 	constructor(
 		private announcementService: AnnouncementService,
 	) {
-		super(meta, paramDef, async (ps, me) => {
+		super(meta, paramDef, async (ps, [me, _]) => {
 			await this.announcementService.read(me, ps.announcementId);
 		});
 	}

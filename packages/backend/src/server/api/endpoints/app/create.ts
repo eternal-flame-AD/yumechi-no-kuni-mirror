@@ -11,6 +11,7 @@ import { unique } from '@/misc/prelude/array.js';
 import { secureRndstr } from '@/misc/secure-rndstr.js';
 import { AppEntityService } from '@/core/entities/AppEntityService.js';
 import { DI } from '@/di-symbols.js';
+import { generateNativeAppToken } from '@/core/crypto/LegacyToken.js';
 
 export const meta = {
 	tags: ['app'],
@@ -46,9 +47,9 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		private appEntityService: AppEntityService,
 		private idService: IdService,
 	) {
-		super(meta, paramDef, async (ps, me) => {
+		super(meta, paramDef, async (ps, auth) => {
 			// Generate secret
-			const secret = secureRndstr(32);
+			const secret = generateNativeAppToken();
 
 			// for backward compatibility
 			const permission = unique(ps.permission.map(v => v.replace(/^(.+)(\/|-)(read|write)$/, '$3:$1')));
@@ -56,7 +57,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 			// Create account
 			const app = await this.appsRepository.insertOne({
 				id: this.idService.gen(),
-				userId: me ? me.id : null,
+				userId: auth?.[0] ? auth?.[0].id : null,
 				name: ps.name,
 				description: ps.description,
 				permission,

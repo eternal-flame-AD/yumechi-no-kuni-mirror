@@ -61,8 +61,8 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		private roleService: RoleService,
 		private activeUsersChart: ActiveUsersChart,
 	) {
-		super(meta, paramDef, async (ps, me) => {
-			const policies = await this.roleService.getUserPolicies(me ? me.id : null);
+		super(meta, paramDef, async (ps, auth) => {
+			const policies = await this.roleService.getUserPolicies(auth?.[0] ? auth?.[0].id : null);
 			if (!policies.gtlAvailable) {
 				throw new ApiError(meta.errors.gtlDisabled);
 			}
@@ -78,10 +78,10 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				.leftJoinAndSelect('reply.user', 'replyUser')
 				.leftJoinAndSelect('renote.user', 'renoteUser');
 
-			if (me) {
-				this.queryService.generateMutedUserQuery(query, me);
-				this.queryService.generateBlockedUserQuery(query, me);
-				this.queryService.generateMutedUserRenotesQueryForNotes(query, me);
+			if (auth?.[0]) {
+				this.queryService.generateMutedUserQuery(query, auth?.[0]);
+				this.queryService.generateBlockedUserQuery(query, auth?.[0]);
+				this.queryService.generateMutedUserRenotesQueryForNotes(query, auth?.[0]);
 			}
 
 			if (ps.withFiles) {
@@ -102,12 +102,12 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 			const timeline = await query.limit(ps.limit).getMany();
 
 			process.nextTick(() => {
-				if (me) {
-					this.activeUsersChart.read(me);
+				if (auth) {
+					this.activeUsersChart.read(auth[0]);
 				}
 			});
 
-			return await this.noteEntityService.packMany(timeline, me);
+			return await this.noteEntityService.packMany(timeline, auth?.[0] ?? null);
 		});
 	}
 }

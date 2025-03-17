@@ -31,7 +31,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 
 		private globalEventService: GlobalEventService,
 	) {
-		super(meta, paramDef, async (ps, me) => {
+		super(meta, paramDef, async (ps, [me, _]) => {
 			// Remove documents
 			await this.noteUnreadsRepository.delete({
 				userId: me.id,

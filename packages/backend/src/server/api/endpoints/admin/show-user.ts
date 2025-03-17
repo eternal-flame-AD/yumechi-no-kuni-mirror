@@ -204,7 +204,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		private roleEntityService: RoleEntityService,
 		private idService: IdService,
 	) {
-		super(meta, paramDef, async (ps, me) => {
+		super(meta, paramDef, async (ps, [me, _]) => {
 			const [user, profile] = await Promise.all([
 				this.usersRepository.findOneBy({ id: ps.userId }),
 				this.userProfilesRepository.findOneBy({ userId: ps.userId }),

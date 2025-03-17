@@ -45,7 +45,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		private roleService: RoleService,
 		private idService: IdService,
 	) {
-		super(meta, paramDef, async (ps, me) => {
+		super(meta, paramDef, async (ps, [me, _]) => {
 			const policies = await this.roleService.getUserPolicies(me.id);
 
 			const count = policies.inviteLimit ? await this.registrationTicketsRepository.countBy({

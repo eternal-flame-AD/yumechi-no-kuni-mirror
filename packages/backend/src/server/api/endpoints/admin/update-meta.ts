@@ -195,7 +195,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		private metaService: MetaService,
 		private moderationLogService: ModerationLogService,
 	) {
-		super(meta, paramDef, async (ps, me) => {
+		super(meta, paramDef, async (ps, [me, _]) => {
 			const set = {} as Partial<MiMeta>;
 
 			if (typeof ps.disableRegistration === 'boolean') {

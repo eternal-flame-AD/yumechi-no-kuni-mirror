@@ -16,6 +16,7 @@ import { RoleService } from '@/core/RoleService.js';
 import { ApiError } from '../../error.js';
 import { ApiLoggerService } from '../../ApiLoggerService.js';
 import type { FindOptionsWhere } from 'typeorm';
+import { AuthenticateService, KIND_MODERATOR_ACL } from '../../AuthenticateService.js';
 
 export const meta = {
 	tags: ['users'],
@@ -90,11 +91,12 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		private roleService: RoleService,
 		private perUserPvChart: PerUserPvChart,
 		private apiLoggerService: ApiLoggerService,
+		private authenticateService: AuthenticateService,
 	) {
-		super(meta, paramDef, async (ps, me, _1, _2, _3, ip) => {
+		super(meta, paramDef, async (ps, auth, _1, _2, ip) => {
 			let user;
 
-			const isModerator = await this.roleService.isModerator(me);
+			const isModeratorAccess = auth && await this.authenticateService.hasPolicy(auth[1], KIND_MODERATOR_ACL);
 			ps.username = ps.username?.trim();
 
 			if (ps.userIds) {
@@ -102,7 +104,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 					return [];
 				}
 
-				const users = await this.usersRepository.findBy(isModerator ? {
+				const users = await this.usersRepository.findBy(isModeratorAccess ? {
 					id: In(ps.userIds),
 				} : {
 					id: In(ps.userIds),
@@ -117,7 +119,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 					if (user != null) _users.push(user);
 				}
 
-				const _userMap = await this.userEntityService.packMany(_users, me, { schema: 'UserDetailed' })
+				const _userMap = await this.userEntityService.packMany(_users, auth?.[0], { schema: 'UserDetailed' })
 					.then(users => new Map(users.map(u => [u.id, u])));
 				return _users.map(u => _userMap.get(u.id)!);
 			} else {
@@ -135,19 +137,19 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 					user = await this.usersRepository.findOneBy(q);
 				}
 
-				if (user == null || (!isModerator && user.isSuspended)) {
+				if (user == null || (!isModeratorAccess && user.isSuspended)) {
 					throw new ApiError(meta.errors.noSuchUser);
 				}
 
 				if (user.host == null) {
-					if (me == null && ip != null) {
+					if (auth?.[0] == null && ip != null) {
 						this.perUserPvChart.commitByVisitor(user, ip);
-					} else if (me && me.id !== user.id) {
-						this.perUserPvChart.commitByUser(user, me.id);
+					} else if (auth?.[0] && auth?.[0].id !== user.id) {
+						this.perUserPvChart.commitByUser(user, auth?.[0].id);
 					}
 				}
 
-				return await this.userEntityService.pack(user, me, {
+				return await this.userEntityService.pack(user, auth?.[0], {
 					schema: 'UserDetailed',
 				});
 			}

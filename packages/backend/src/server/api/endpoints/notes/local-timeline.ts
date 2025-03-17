@@ -77,11 +77,11 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		private fanoutTimelineEndpointService: FanoutTimelineEndpointService,
 		private queryService: QueryService,
 	) {
-		super(meta, paramDef, async (ps, me) => {
+		super(meta, paramDef, async (ps, auth) => {
 			const untilId = ps.untilId ?? (ps.untilDate ? this.idService.gen(ps.untilDate!) : null);
 			const sinceId = ps.sinceId ?? (ps.sinceDate ? this.idService.gen(ps.sinceDate!) : null);
 
-			const policies = await this.roleService.getUserPolicies(me ? me.id : null);
+			const policies = await this.roleService.getUserPolicies(auth?.[0] ? auth?.[0].id : null);
 			if (!policies.ltlAvailable) {
 				throw new ApiError(meta.errors.ltlDisabled);
 			}
@@ -95,15 +95,15 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 					limit: ps.limit,
 					withFiles: ps.withFiles,
 					withReplies: ps.withReplies,
-				}, me);
+				}, auth?.[0] ?? null);
 
 				process.nextTick(() => {
-					if (me) {
-						this.activeUsersChart.read(me);
+					if (auth?.[0]) {
+						this.activeUsersChart.read(auth?.[0]);
 					}
 				});
 
-				return await this.noteEntityService.packMany(timeline, me);
+				return await this.noteEntityService.packMany(timeline, auth?.[0] ?? null);
 			}
 
 			const timeline = await this.fanoutTimelineEndpointService.timeline({
@@ -111,12 +111,12 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				sinceId,
 				limit: ps.limit,
 				allowPartial: ps.allowPartial,
-				me,
+				me: auth?.[0] ?? null,
 				useDbFallback: this.serverSettings.enableFanoutTimelineDbFallback,
 				redisTimelines:
 					ps.withFiles ? ['localTimelineWithFiles']
 					: ps.withReplies ? ['localTimeline', 'localTimelineWithReplies']
-					: me ? ['localTimeline', `localTimelineWithReplyTo:${me.id}`]
+					: auth ? ['localTimeline', `localTimelineWithReplyTo:${auth[0].id}`]
 					: ['localTimeline'],
 				alwaysIncludeMyNotes: true,
 				excludePureRenotes: !ps.withRenotes,
@@ -126,12 +126,12 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 					limit,
 					withFiles: ps.withFiles,
 					withReplies: ps.withReplies,
-				}, me),
+				}, auth?.[0] ?? null),
 			});
 
 			process.nextTick(() => {
-				if (me) {
-					this.activeUsersChart.read(me);
+				if (auth?.[0]) {
+					this.activeUsersChart.read(auth?.[0]);
 				}
 			});
 

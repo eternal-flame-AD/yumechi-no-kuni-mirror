@@ -7,6 +7,7 @@ export const DI = {
 	config: Symbol('config'),
 	db: Symbol('db'),
 	meta: Symbol('meta'),
+	runtimeSecretService: Symbol('runtimeSecretService'),
 	meilisearch: Symbol('meilisearch'),
 	redis: Symbol('redis'),
 	redisForPub: Symbol('redisForPub'),
@@ -17,6 +18,7 @@ export const DI = {
 	//#region Repositories
 	usersRepository: Symbol('usersRepository'),
 	notesRepository: Symbol('notesRepository'),
+	jwtTokenInvalidationsRepository: Symbol('jwtTokenInvalidationsRepository'),
 	announcementsRepository: Symbol('announcementsRepository'),
 	announcementReadsRepository: Symbol('announcementReadsRepository'),
 	appsRepository: Symbol('appsRepository'),

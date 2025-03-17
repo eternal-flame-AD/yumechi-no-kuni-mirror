@@ -81,6 +81,7 @@ import {
 } from './_.js';
 import type { Provider } from '@nestjs/common';
 import type { DataSource } from 'typeorm';
+import { MiJWTTokenInvalidation } from './JWTTokenInvalidation.js';
 
 const $usersRepository: Provider = {
 	provide: DI.usersRepository,
@@ -325,6 +326,12 @@ const $authSessionsRepository: Provider = {
 const $accessTokensRepository: Provider = {
 	provide: DI.accessTokensRepository,
 	useFactory: (db: DataSource) => db.getRepository(MiAccessToken).extend(miRepository as MiRepository<MiAccessToken>),
+	inject: [DI.db],
+};
+
+const $jwtTokenInvalidationsRepository: Provider = {
+	provide: DI.jwtTokenInvalidationsRepository,
+	useFactory: (db: DataSource) => db.getRepository(MiJWTTokenInvalidation).extend(miRepository as MiRepository<MiJWTTokenInvalidation>),
 	inject: [DI.db],
 };
 
@@ -618,6 +625,7 @@ const $reversiGamesRepository: Provider = {
 		$registrationTicketsRepository,
 		$authSessionsRepository,
 		$accessTokensRepository,
+		$jwtTokenInvalidationsRepository,
 		$signinsRepository,
 		$pagesRepository,
 		$pageLikesRepository,

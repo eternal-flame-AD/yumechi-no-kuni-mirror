@@ -47,17 +47,17 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		private queryService: QueryService,
 		private announcementEntityService: AnnouncementEntityService,
 	) {
-		super(meta, paramDef, async (ps, me) => {
+		super(meta, paramDef, async (ps, auth) => {
 			const query = this.queryService.makePaginationQuery(this.announcementsRepository.createQueryBuilder('announcement'), ps.sinceId, ps.untilId)
 				.andWhere('announcement.isActive = :isActive', { isActive: ps.isActive })
 				.andWhere(new Brackets(qb => {
-					if (me) qb.orWhere('announcement.userId = :meId', { meId: me.id });
+					if (auth) qb.orWhere('announcement.userId = :meId', { meId: auth[0].id });
 					qb.orWhere('announcement.userId IS NULL');
 				}));
 
 			const announcements = await query.limit(ps.limit).getMany();
 
-			return this.announcementEntityService.packMany(announcements, me);
+			return this.announcementEntityService.packMany(announcements, auth?.[0]);
 		});
 	}
 }

@@ -44,8 +44,8 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 
 		private appEntityService: AppEntityService,
 	) {
-		super(meta, paramDef, async (ps, user, token) => {
-			const isSecure = user != null && token == null;
+		super(meta, paramDef, async (ps, auth) => {
+			const isUserSession = auth && auth[1].app_id == null;
 
 			// Lookup app
 			const ap = await this.appsRepository.findOneBy({ id: ps.appId });
@@ -54,9 +54,9 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				throw new ApiError(meta.errors.noSuchApp);
 			}
 
-			return await this.appEntityService.pack(ap, user, {
+			return await this.appEntityService.pack(ap, auth?.[0], {
 				detail: true,
-				includeSecret: isSecure && (ap.userId === user!.id),
+				includeSecret: (isUserSession && (ap.userId === auth?.[0]!.id)) ?? false,
 			});
 		});
 	}

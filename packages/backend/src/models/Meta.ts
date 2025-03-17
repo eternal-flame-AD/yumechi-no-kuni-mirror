@@ -664,4 +664,16 @@ export class MiMeta {
 		nullable: true,
 	})
 	public googleAnalyticsMeasurementId: string | null;
+
+	@Column('varchar', {
+		length: 512,
+		nullable: true,
+	})
+	public persistentSecretChecksum: string | null;
+
+	@Column('varchar', {
+		length: 512,
+		nullable: true,
+	})
+	public persistentSecret: string | null;
 }

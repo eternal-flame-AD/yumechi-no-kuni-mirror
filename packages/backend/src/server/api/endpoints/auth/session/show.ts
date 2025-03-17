@@ -61,7 +61,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 
 		private authSessionEntityService: AuthSessionEntityService,
 	) {
-		super(meta, paramDef, async (ps, me) => {
+		super(meta, paramDef, async (ps, auth) => {
 			// Lookup session
 			const session = await this.authSessionsRepository.findOneBy({
 				token: ps.token,
@@ -71,7 +71,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				throw new ApiError(meta.errors.noSuchSession);
 			}
 
-			return await this.authSessionEntityService.pack(session, me);
+			return await this.authSessionEntityService.pack(session, auth?.[0] ?? null);
 		});
 	}
 }

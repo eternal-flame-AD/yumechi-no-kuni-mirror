@@ -43,7 +43,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		private abuseUserReportsRepository: AbuseUserReportsRepository,
 		private abuseReportService: AbuseReportService,
 	) {
-		super(meta, paramDef, async (ps, me) => {
+		super(meta, paramDef, async (ps, [me, _]) => {
 			const report = await this.abuseUserReportsRepository.findOneBy({ id: ps.reportId });
 			if (!report) {
 				throw new ApiError(meta.errors.noSuchAbuseReport);
